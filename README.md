@@ -1,60 +1,66 @@
-# Routing Number Lookup API + MCP Server
+# MCP Routing Number Server
 
-Federal Reserve ABA routing number lookup, search, and validation. Embeds the FedACH directory data locally for fast, dependency-free lookups.
+A [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for looking up, searching, and validating ABA routing numbers from the Federal Reserve FedACH directory.
 
-## Endpoints
+## Tools (3 total)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/` | API info |
-| GET | `/health` | Health check |
-| GET | `/data-info` | Data source and freshness info |
-| GET | `/lookup?routing=021000021` | Look up by routing number |
-| GET | `/search?name=chase&state=NY&limit=25` | Search by name, city, state |
-| GET | `/validate?routing=021000021` | Validate routing number checksum |
-| POST | `/lookup/batch` | Batch lookup (max 50) |
-| GET | `/stats` | Institution counts by state |
-| POST | `/mcp` | MCP Streamable HTTP transport |
+| Tool | Description |
+|------|-------------|
+| `routing_lookup` | Look up a bank by its 9-digit ABA routing number |
+| `routing_search` | Search institutions by name, city, or state |
+| `routing_validate` | Validate an ABA routing number checksum (weights 3,7,1) |
 
-## MCP Tools
-
-- **routing_lookup** — Look up a bank by routing number
-- **routing_search** — Search institutions by name, city, or state
-- **routing_validate** — Validate ABA checksum (weights 3,7,1)
-
-## Data Pipeline
+## Install
 
 ```bash
-npm run build-data
+npx @easysolutions906/mcp-routing
 ```
 
-Downloads the FedACH directory from the Federal Reserve and converts to JSON. Falls back to bundled sample data if the download is unavailable.
+### Claude Desktop
 
-To use a local file, place `FedACHdir.txt` in `scripts/` and run the build script.
+Add to your `claude_desktop_config.json`:
 
-## Setup
-
-```bash
-npm ci
-npm run build-data
-npm start           # requires PORT env var for HTTP mode
+```json
+{
+  "mcpServers": {
+    "routing": {
+      "command": "npx",
+      "args": ["-y", "@easysolutions906/mcp-routing"]
+    }
+  }
+}
 ```
 
-## Environment Variables
+### Cursor
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `PORT` | Yes (HTTP) | Server port. Omit for stdio MCP mode |
-| `ADMIN_SECRET` | No | Secret for admin key management endpoints |
-| `STRIPE_SECRET_KEY` | No | Stripe API key for billing |
-| `STRIPE_WEBHOOK_SECRET` | No | Stripe webhook signature verification |
+Add to `.cursor/mcp.json`:
 
-## Authentication
+```json
+{
+  "mcpServers": {
+    "routing": {
+      "command": "npx",
+      "args": ["-y", "@easysolutions906/mcp-routing"]
+    }
+  }
+}
+```
 
-Free tier: no API key required (50 lookups/day, 5/min).
+## REST API
 
-Paid plans: pass `x-api-key` header or `api_key` query parameter.
+Set `PORT` env var to run as an HTTP server.
 
-## Checksum Algorithm
+- `GET /lookup?routing=021000021` -- look up by routing number
+- `GET /search?name=chase&state=NY` -- search by name, city, or state
+- `GET /validate?routing=021000021` -- validate routing number checksum
+- `POST /lookup/batch` -- batch lookup multiple routing numbers
+- `GET /stats` -- institution counts by state
 
-ABA routing numbers use a weighted checksum: multiply each digit by the weight `[3,7,1,3,7,1,3,7,1]`, sum the products, and verify the result is divisible by 10.
+## Data Source
+
+FedACH directory from the [Federal Reserve](https://www.frbservices.org/). Run `npm run build-data` to download and regenerate. Falls back to bundled data if the download is unavailable.
+
+## Transport
+
+- **stdio** (default) -- for local use with Claude Desktop and Cursor
+- **HTTP** -- set `PORT` env var to start in Streamable HTTP mode on `/mcp`
